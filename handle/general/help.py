@@ -1,12 +1,14 @@
-import random
-
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes
 
-from ..list_assets import gif_help
+
+DOWNLOAD = range(1)
 
 
 async def help(update: Update, context: ContextTypes.DEFAULT_TYPE):
+	context.user_data.clear()
+	query = update.callback_query
+
 	message_lines = [
 		"Berikut adalah list perintah yang tersedia:",
 		"",
@@ -32,13 +34,12 @@ async def help(update: Update, context: ContextTypes.DEFAULT_TYPE):
 		"- Jika Anda tidak memahami perintah yang diberikan, Anda dapat menggunakan perintah /cancel untuk membatalkan perintah.",
 		"",
 		"🤖 Status Bot: @NexusStatus",
-		"🧧 Donate: https://tako.id/cliari",
 	]
 
 	# Buat inline buttons
 	buttons_callback = [
 		[
-			InlineKeyboardButton("Back", callback_data="back"),
+			InlineKeyboardButton("Start menu", callback_data="start"),
 		],
 		[
 			InlineKeyboardButton("Docx to PDF", callback_data="docxtopdf"),
@@ -54,38 +55,29 @@ async def help(update: Update, context: ContextTypes.DEFAULT_TYPE):
 			InlineKeyboardButton("YouTube", callback_data="youtube"),
 			InlineKeyboardButton("Resize Image", callback_data="resizeimg"),
 			InlineKeyboardButton("Image to Sticker", callback_data="imgtosticker"),
-		]
-	]
-
-	buttons = [
-		[
-			InlineKeyboardButton("Docx to PDF", callback_data="docxtopdf"),
-			InlineKeyboardButton("PDF to Docx", callback_data="pdftodocx"),
-			InlineKeyboardButton("Reduce PDF", callback_data="reducepdf"),
 		],
 		[
-			InlineKeyboardButton("Stamp PDF", callback_data="stamppdf"),
-			InlineKeyboardButton("Image to PDF", callback_data="imgtopdf"),
-			InlineKeyboardButton("TikTok", callback_data="tiktok"),
+			InlineKeyboardButton("🧧 Donate", url="https://tako.id/cliari"),
 		],
-		[
-			InlineKeyboardButton("YouTube", callback_data="youtube"),
-			InlineKeyboardButton("Resize Image", callback_data="resizeimg"),
-			InlineKeyboardButton("Image to Sticker", callback_data="imgtosticker"),
-		]
 	]
 
 	markup_callback = InlineKeyboardMarkup(buttons_callback)
-	reply_markup = InlineKeyboardMarkup(buttons)
 
-	if update.callback_query:
-		await update.callback_query.edit_message_caption(
-			caption="\n".join(message_lines), parse_mode="HTML", reply_markup=markup_callback
+	if query and query.data == "help":
+		await query.answer()
+		await query.edit_message_text(
+			text="\n".join(message_lines), parse_mode="HTML", reply_markup=markup_callback
+		)
+	elif query and query.data == "help_after_download":
+		await context.bot.send_message(
+			chat_id=query.message.chat.id,
+			text="\n".join(message_lines),
+			parse_mode="HTML",
+			reply_markup=markup_callback,
 		)
 	else:
-		await update.message.reply_animation(
-			animation="".join(random.choice(gif_help)),
-			caption="\n".join(message_lines),
+		await update.message.reply_text(
+			text="\n".join(message_lines),
 			parse_mode="HTML",
-			reply_markup=reply_markup,
+			reply_markup=markup_callback,
 		)
