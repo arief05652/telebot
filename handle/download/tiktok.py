@@ -1,50 +1,116 @@
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import ContextTypes, ConversationHandler
-import yt_dlp
-import uuid
 import os
-import io
+import asyncio
+import uuid
+
+import yt_dlp
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
+from telegram.ext import ContextTypes, ConversationHandler
 
 # State untuk ConversationHandler
-ONE = range(1)
+TIKTOK = range(1)
+# batasi concurrent handle
+semap = asyncio.Semaphore(15)
 
 
 async def tiktok(update: Update, context: ContextTypes.DEFAULT_TYPE):
+	context.user_data.clear()
 	button = [[InlineKeyboardButton("Cancel", callback_data="cancel")]]
-	query = update.callback_query
 
-	if query and query.data == "tiktok":
-		await context.bot.send_message(
-			chat_id=query.message.chat.id,
-			text="Silahkan kirimkan link video TikTok yang ingin Anda download:",
-			reply_markup=InlineKeyboardMarkup(button),
+	try:
+		if update.callback_query and update.callback_query.data == "tiktok":
+			send = await context.bot.send_message(
+				chat_id=update.effective_chat.id,
+				text="Silahkan kirimkan link video TikTok yang ingin Anda download:",
+				reply_markup=InlineKeyboardMarkup(button),
+			)
+		else:
+			send = await update.message.reply_text(
+				text="Silahkan kirimkan link video TikTok yang ingin Anda download:",
+				reply_markup=InlineKeyboardMarkup(button),
+			)
+
+		context.user_data["message_data"] = {"chat_id": send.chat.id, "message_id": send.message_id}
+		return TIKTOK
+
+	except Exception as e:
+		await update.message.reply_text("Terjadi kesalahan, silahkan coba lagi.")
+		return ConversationHandler.END
+
+
+async def tiktok_media(update: Update, context: ContextTypes.DEFAULT_TYPE):
+	try:
+		link = update.message.text.strip()
+		data = context.user_data.get("message_data", {})
+
+		tiktok_domains = [
+			"https://vt.tiktok.com/",
+			"https://www.tiktok.com/",
+			"https://vm.tiktok.com/",
+			"https://tiktok.com/",
+		]
+
+		if not any(link.startswith(domain) for domain in tiktok_domains):
+			button = [
+				[
+					InlineKeyboardButton("Help Menu", callback_data="help"),
+					InlineKeyboardButton("Ulangi", callback_data="tiktok"),
+				]
+			]
+			await update.message.reply_text(
+				"Pastikan anda memasukan link tiktok dengan benar",
+				reply_markup=InlineKeyboardMarkup(button),
+			)
+			return ConversationHandler.END
+
+		button = [
+			[
+				InlineKeyboardButton("Video", callback_data="tiktok_video"),
+				InlineKeyboardButton("Music", callback_data="tiktok_music"),
+			],
+			[InlineKeyboardButton("Cancel", callback_data="cancel")],
+		]
+
+		if data:
+			await context.bot.delete_message(
+				chat_id=update.effective_chat.id, message_id=data["message_id"]
+			)
+
+		context.user_data["download_link"] = link  # Simpan langsung string link
+
+		send = await update.message.reply_text(
+			"Pilih media yang ingin di download", reply_markup=InlineKeyboardMarkup(button)
 		)
-	else:
-		await update.message.reply_text(
-			text="Silahkan kirimkan link video TikTok yang ingin Anda download:",
-			reply_markup=InlineKeyboardMarkup(button),
-		)
-	return ONE
+
+		context.user_data["message_data"] = {"chat_id": send.chat.id, "message_id": send.message_id}
+		return TIKTOK
+
+	except Exception as e:
+		await update.message.reply_text("Terjadi kesalahan, silahkan coba lagi.")
+		return ConversationHandler.END
 
 
 async def download_tiktok_music(update: Update, context: ContextTypes.DEFAULT_TYPE):
 	query = update.callback_query
-	info = context.user_data["download_link"]
-
-	button = [
-		[
-			InlineKeyboardButton("Help menu", callback_data="help_after_download"),
-			InlineKeyboardButton("🧧 Donate", url="https://tako.id/cliari"),
-		]
-	]
-
+	temp_file = f"assets/audio/{uuid.uuid4()}.mp4"
 	try:
-		# Hapus pesan tombol
-		await context.bot.delete_message(
-			chat_id=query.message.chat.id, message_id=query.message.message_id
-		)
+		await query.answer()
 
-		# Konfigurasi yt-dlp yang benar
+		link = context.user_data.get("download_link")
+		message_data = context.user_data.get("message_data")
+
+		if not link:
+			await query.edit_message_text("Link tidak ditemukan, silahkan coba lagi.")
+			context.user_data.clear()
+			return ConversationHandler.END
+
+		button = [
+			[
+				InlineKeyboardButton("Help menu", callback_data="help_after_download"),
+				InlineKeyboardButton("Support me", url="https://tako.id/cliari"),
+			]
+		]
+
+		# Konfigurasi yt-dlp
 		ydl_opts = {
 			"format": "bestaudio/best",
 			"postprocessors": [
@@ -54,85 +120,141 @@ async def download_tiktok_music(update: Update, context: ContextTypes.DEFAULT_TY
 					"preferredquality": "192",
 				}
 			],
-			"outtmpl": f"assets/video/{uuid.uuid4()}",  # Tanpa ekstensi
-			"keepvideo": False,
+			"outtmpl": f"assets/audio/{uuid.uuid4()}",  # Tanpa ekstensi
 			"quiet": True,
 		}
 
-		with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-			await context.bot.send_chat_action(
-				chat_id=update.effective_chat.id,
-				action="upload_voice"
-			)
-			info = ydl.extract_info(info["link"], download=True)
+		# Buat folder jika belum ada
+		os.makedirs("assets/video", exist_ok=True)
 
-			# File akhir akan selalu .mp3 karena preferredcodec
+		with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+			send = await context.bot.edit_message_text(
+				text="Mohon tunggu.......",
+				chat_id=message_data.get("chat_id"),
+				message_id=message_data.get("message_id"),
+			)
+
+			await context.bot.send_chat_action(chat_id=query.message.chat.id, action="upload_voice")
+
+			info = ydl.extract_info(link, download=True)
 			filename = f"{ydl.prepare_filename(info)}.mp3"
 
-			# Kirim audio
+			caption = [
+				"📹 <b>Video TikTok</b>",
+				f"🎵 {info.get('title', 'No caption')}",
+				f"👁️ {info.get('view_count', 0):,} views",
+				f"❤️ {info.get('like_count', 0):,} likes",
+				"",
+				"Jangan lupa share bot ini jika menurutmu berguna.",
+			]
+
+			await context.bot.delete_message(chat_id=send.chat.id, message_id=send.message_id)
+
 			await context.bot.send_audio(
 				chat_id=query.message.chat.id,
 				audio=open(filename, "rb"),
-				title="Nexus music",
-				performer="TikTok",
-				duration=int(info.get("duration", 0)),
+				title=info.get("title", "TikTok Audio"),
+				performer=info.get("uploader", "TikTok"),
+				caption="\n".join(caption),
+				parse_mode="HTML",
 				reply_markup=InlineKeyboardMarkup(button),
 			)
 
-			# Bersihkan file
-			os.remove(filename)
-			context.user_data.clear()
+			if os.path.exists(filename):
+				os.remove(filename)
 
-	except Exception as e:
-		await context.bot.send_message(
-			chat_id=query.message.chat.id, text=f"❌ Error: {str(e)[:200]}... (truncated)"
+		context.user_data.clear()
+		return ConversationHandler.END
+
+	except yt_dlp.utils.DownloadError as e:
+		await query.edit_message_text(
+			"Gagal mendownload audio. Link mungkin tidak valid atau video di-private."
 		)
+	except Exception as e:
+		await query.edit_message_text("Terjadi kesalahan saat memproses audio.: ".format(e))
+	finally:
+		if os.path.exists(temp_file):
+			os.remove(temp_file)
+		context.user_data.clear()
+	return ConversationHandler.END
 
 
 async def download_tiktok_video(update: Update, context: ContextTypes.DEFAULT_TYPE):
-	link = update.message.text
-
-	button = [
-		[
-			InlineKeyboardButton("Help menu", callback_data="help_after_download"),
-			InlineKeyboardButton("Download music", callback_data="tiktok_music"),
-		],
-		[
-			InlineKeyboardButton("🧧 Donate", url="https://tako.id/cliari"),
-		],
-	]
-
+	query = update.callback_query
+	temp_file = f"assets/video/{uuid.uuid4()}.mp4"
 	try:
+		await query.answer()
+
+		link = context.user_data.get("download_link")
+		message_data = context.user_data.get("message_data")
+
+		if not link:
+			await query.edit_message_text("Link tidak ditemukan, silahkan coba lagi.")
+			context.user_data.clear()
+			return ConversationHandler.END
+
+		button = [
+			[
+				InlineKeyboardButton("Help menu", callback_data="help_after_download"),
+				InlineKeyboardButton("Support me", url="https://tako.id/cliari"),
+			]
+		]
+
+		# Konfigurasi yt-dlp
 		ydl_opts = {
-				"format": "best", 
-				"quiet": True, 
-				"outtmpl": f"assets/video/{uuid.uuid4()}"
+			"format": "best",
+			"outtmpl": temp_file,
+			"quiet": True,
 		}
 
+		# Buat folder jika belum ada
+		os.makedirs("assets/video", exist_ok=True)
+
 		with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-			await context.bot.send_chat_action(
-				chat_id=update.effective_chat.id,
-				action="upload_video"
+			send = await context.bot.edit_message_text(
+				text="Mohon tunggu.......",
+				chat_id=message_data.get("chat_id"),
+				message_id=message_data.get("message_id"),
 			)
+
+			await context.bot.send_chat_action(chat_id=query.message.chat.id, action="upload_video")
+
 			info = ydl.extract_info(link, download=True)
 			filename = ydl.prepare_filename(info)
+
 			caption = [
-				"<b>Information</b>",
+				"📹 <b>Video TikTok</b>",
+				f"🎵 {info.get('title', 'No caption')}",
+				f"👁️ {info.get('view_count', 0):,} views",
+				f"❤️ {info.get('like_count', 0):,} likes",
 				"",
-				f"Caption: {info['title']}",
-				f"View: {float(info['view_count']):,.0f}",
-				f"Like: {float(info['like_count']):,.0f}",
-				f"Repost: {float(info['repost_count']):,.0f}",
+				"Jangan lupa share bot ini jika menurutmu berguna.",
 			]
-			context.user_data["download_link"] = {"link": link}
-			await update.message.reply_video(
+
+			await context.bot.delete_message(chat_id=send.chat.id, message_id=send.message_id)
+
+			await context.bot.send_video(
+				chat_id=query.message.chat.id,
 				video=open(filename, "rb"),
 				caption="\n".join(caption),
 				parse_mode="HTML",
 				reply_markup=InlineKeyboardMarkup(button),
 			)
-			os.remove(filename)
-	except Exception as e:
-		await update.message.reply_text(f"Error: {e}")
 
+			if os.path.exists(filename):
+				os.remove(filename)
+
+		context.user_data.clear()
+		return ConversationHandler.END
+
+	except yt_dlp.utils.DownloadError as e:
+		await query.edit_message_text(
+			"Gagal mendownload video. Link mungkin tidak valid atau video di-private."
+		)
+	except Exception as e:
+		await query.edit_message_text("Terjadi kesalahan saat memproses video.")
+	finally:
+		if os.path.exists(temp_file):
+			os.remove(temp_file)
+		context.user_data.clear()
 	return ConversationHandler.END
