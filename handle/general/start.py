@@ -2,6 +2,7 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import ContextTypes
 
 
+# START COMMANDS
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 	# Pesan caption
 	caption = """
@@ -28,14 +29,12 @@ Selamat datang! Saya adalah NexusBot yang siap membantu Anda.
 	query = update.callback_query
 
 	if query and query.data == "start":  # pattern callback
-		await query.answer()
 		await update.callback_query.edit_message_text(
 			text=caption,
 			parse_mode="HTML",
 			reply_markup=reply_markup,
 		)
 	else:
-		# Kirim GIF dengan caption + buttons
 		await update.message.reply_text(
 			text=caption,
 			parse_mode="HTML",
