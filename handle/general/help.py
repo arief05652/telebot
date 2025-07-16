@@ -1,10 +1,10 @@
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import ContextTypes
-
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
+from telegram.ext import ContextTypes, ConversationHandler
 
 DOWNLOAD = range(1)
 
 
+# HELP COMMANDS
 async def help(update: Update, context: ContextTypes.DEFAULT_TYPE):
 	context.user_data.clear()
 	query = update.callback_query
@@ -63,21 +63,23 @@ async def help(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 	markup_callback = InlineKeyboardMarkup(buttons_callback)
 
-	if query and query.data == "help":
-		await query.answer()
+	if query and query.data == "help":  # edit chat
 		await query.edit_message_text(
 			text="\n".join(message_lines), parse_mode="HTML", reply_markup=markup_callback
 		)
-	elif query and query.data == "help_after_download":
+		return ConversationHandler.END
+	elif query and query.data == "help_after_download":  # kirim chat baru
 		await context.bot.send_message(
 			chat_id=query.message.chat.id,
 			text="\n".join(message_lines),
 			parse_mode="HTML",
 			reply_markup=markup_callback,
 		)
+		return ConversationHandler.END
 	else:
 		await update.message.reply_text(
 			text="\n".join(message_lines),
 			parse_mode="HTML",
 			reply_markup=markup_callback,
 		)
+		return ConversationHandler.END
