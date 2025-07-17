@@ -27,22 +27,35 @@ async def docx_to_pdf(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def cv_docx_to_pdf(update: Update, context: ContextTypes.DEFAULT_TYPE):
 	os.makedirs("assets/document", exist_ok=True)
-	message = context.user_data.get('message_id')
+	message = context.user_data.get("message_id")
 
 	# Hapus pesan bot sebelumnya
 	if message:
-		await context.bot.delete_message(
-			chat_id=update.effective_chat.id, message_id=message
-		)
+		await context.bot.delete_message(chat_id=update.effective_chat.id, message_id=message)
 	# Ambil file dari chat yang dikirimkan
 	file = await update.message.document.get_file()
 	# Ambil nama file
-	file_name = update.message.document.file_name
+	file_name = update.message.document.file_name.lower()
 
 	id = uuid.uuid4()
 
+	button = [
+		[
+			InlineKeyboardButton("Help menu", callback_data="help_after_download"),
+			InlineKeyboardButton("Support me", url="https://tako.id/cliari"),
+		]
+	]
+
 	# Cek apakah yang dikirimkn ber-ektensi .docx
-	if file_name.endswith(".docx"):
+	if not file_name.endswith(".docx"):
+		await context.bot.delete_message(chat_id=update.effective_chat.id, message_id=message)
+		await context.bot.send_message(
+			chat_id=update.effective_chat.id,
+			text="Pastikan file harus berbentuk DOCX",
+			reply_markup=InlineKeyboardMarkup(button),
+		)
+		return ConversationHandler.END
+	else:
 		# Kirim pesan konversi dan simpan message_id-nya
 		processing_msg = await context.bot.send_message(
 			chat_id=update.effective_chat.id, text="Converting DOCX to PDF..."
@@ -59,6 +72,8 @@ async def cv_docx_to_pdf(update: Update, context: ContextTypes.DEFAULT_TYPE):
 		os.system(
 			f"libreoffice --headless --nologo --norestore --convert-to pdf --outdir {os.path.abspath('assets/document')} {temp_docx}"
 		)
+		# Hapus ketika sudah di convert
+		os.remove(temp_docx)
 
 		if not os.path.exists(temp_pdf):
 			await context.bot.send_message(
@@ -71,13 +86,6 @@ async def cv_docx_to_pdf(update: Update, context: ContextTypes.DEFAULT_TYPE):
 			chat_id=update.effective_chat.id, message_id=processing_msg.message_id
 		)
 
-		button = [
-			[
-				InlineKeyboardButton("Help menu", callback_data="help_after_download"),
-				InlineKeyboardButton("Support me", url="https://tako.id/cliari"),
-			]
-		]
-
 		await context.bot.send_document(
 			chat_id=update.effective_chat.id,
 			document=open(temp_pdf, "rb"),
@@ -86,7 +94,5 @@ async def cv_docx_to_pdf(update: Update, context: ContextTypes.DEFAULT_TYPE):
 			caption="Jangan lupa share bot ini jika menurutmu berguna.",
 		)
 
-		os.remove(temp_docx)
 		os.remove(temp_pdf)
-
-	return ConversationHandler.END
+		return ConversationHandler.END
