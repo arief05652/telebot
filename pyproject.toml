@@ -5,6 +5,7 @@ description = "Bot Telegram untuk membantu kebutuhan pengguna"
 readme = "README.md"
 requires-python = ">=3.13.5"
 dependencies = [
+    "pdf2docx>=0.5.8",
     "pillow>=11.3.0",
     "psutil>=7.0.0",
     "pypdf>=5.8.0",
