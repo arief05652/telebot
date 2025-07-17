@@ -21,26 +21,27 @@ async def docx_to_pdf(update: Update, context: ContextTypes.DEFAULT_TYPE):
 	)
 
 	# Simpan message_id bot ke user_data
-	context.user_data["bot_message_id"] = sent_message.message_id
+	context.user_data["message_id"] = sent_message.message_id
 	return INPUT_FILE
 
 
 async def cv_docx_to_pdf(update: Update, context: ContextTypes.DEFAULT_TYPE):
 	os.makedirs("assets/document", exist_ok=True)
+	message = context.user_data.get('message_id')
 
 	# Hapus pesan bot sebelumnya
-	if "bot_message_id" in context.user_data:
-		try:
-			await context.bot.delete_message(
-				chat_id=update.effective_chat.id, message_id=context.user_data["bot_message_id"]
-			)
-		except Exception as e:
-			print(f"Gagal menghapus pesan: {e}")
-
+	if message:
+		await context.bot.delete_message(
+			chat_id=update.effective_chat.id, message_id=message
+		)
+	# Ambil file dari chat yang dikirimkan
 	file = await update.message.document.get_file()
+	# Ambil nama file
 	file_name = update.message.document.file_name
+
 	id = uuid.uuid4()
 
+	# Cek apakah yang dikirimkn ber-ektensi .docx
 	if file_name.endswith(".docx"):
 		# Kirim pesan konversi dan simpan message_id-nya
 		processing_msg = await context.bot.send_message(
@@ -48,12 +49,15 @@ async def cv_docx_to_pdf(update: Update, context: ContextTypes.DEFAULT_TYPE):
 		)
 		context.user_data["processing_msg_id"] = processing_msg.message_id
 
+		# Template file
 		temp_docx = os.path.abspath(f"assets/document/{id}.docx")
 		temp_pdf = os.path.abspath(f"assets/document/{id}.pdf")
 
+		# Download file yang dikirimkan user
 		await file.download_to_drive(temp_docx)
+		# Jalankan libre untuk convert
 		os.system(
-			f"libreoffice --headless --convert-to pdf --outdir {os.path.abspath('assets/document')} {temp_docx}"
+			f"libreoffice --headless --nologo --norestore --convert-to pdf --outdir {os.path.abspath('assets/document')} {temp_docx}"
 		)
 
 		if not os.path.exists(temp_pdf):
