@@ -33,7 +33,7 @@ async def help(update: Update, context: ContextTypes.DEFAULT_TYPE):
 		"- Bot ini tidak menyimpan data yang Anda kirimkan, namun kami akan memeriksa apakah Anda mengirimkan file yang valid.",
 		"- Jika Anda tidak memahami perintah yang diberikan, Anda dapat menggunakan perintah /cancel untuk membatalkan perintah.",
 		"",
-		"🤖 Status Bot: @NexusStatus",
+		"🤖 Status Bot: @NexusUpdatee",
 	]
 
 	# Buat inline buttons
@@ -57,6 +57,7 @@ async def help(update: Update, context: ContextTypes.DEFAULT_TYPE):
 			InlineKeyboardButton("Image to Sticker", callback_data="imgtosticker"),
 		],
 		[
+			InlineKeyboardButton("🟢 Status bot", callback_data="status"),
 			InlineKeyboardButton("🧧 Donate", url="https://tako.id/cliari"),
 		],
 	]
