@@ -6,9 +6,10 @@ readme = "README.md"
 requires-python = ">=3.13.5"
 dependencies = [
     "pillow>=11.3.0",
+    "psutil>=7.0.0",
     "pypdf>=5.8.0",
     "python-dotenv>=1.1.1",
-    "python-telegram-bot>=22.2",
+    "python-telegram-bot[http2]>=22.2",
     "yt-dlp>=2025.6.30",
 ]
 
