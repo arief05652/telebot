@@ -1,4 +1,4 @@
-from .convert import cv_docx_to_pdf, docx_to_pdf
+from .convert import cv_docx_to_pdf, docx_to_pdf, pdf_to_docx, cv_pdf_to_docx
 from .download import (
 	download_tiktok_music,
 	download_tiktok_video,
