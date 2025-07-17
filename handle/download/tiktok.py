@@ -1,5 +1,4 @@
 import os
-import asyncio
 import uuid
 
 import yt_dlp
@@ -8,10 +7,9 @@ from telegram.ext import ContextTypes, ConversationHandler
 
 # State untuk ConversationHandler
 TIKTOK = range(1)
-# batasi concurrent handle
-semap = asyncio.Semaphore(15)
 
 
+# ENTRY POINT
 async def tiktok(update: Update, context: ContextTypes.DEFAULT_TYPE):
 	context.user_data.clear()
 	button = [[InlineKeyboardButton("Cancel", callback_data="cancel")]]
@@ -36,7 +34,7 @@ async def tiktok(update: Update, context: ContextTypes.DEFAULT_TYPE):
 		await update.message.reply_text("Terjadi kesalahan, silahkan coba lagi.")
 		return ConversationHandler.END
 
-
+# PILIH MEDIA DOWNLOADER
 async def tiktok_media(update: Update, context: ContextTypes.DEFAULT_TYPE):
 	try:
 		link = update.message.text.strip()
@@ -88,10 +86,10 @@ async def tiktok_media(update: Update, context: ContextTypes.DEFAULT_TYPE):
 		await update.message.reply_text("Terjadi kesalahan, silahkan coba lagi.")
 		return ConversationHandler.END
 
-
+# DOWNLOAD TIKTOK MUSIC
 async def download_tiktok_music(update: Update, context: ContextTypes.DEFAULT_TYPE):
 	query = update.callback_query
-	temp_file = f"assets/audio/{uuid.uuid4()}.mp4"
+	temp_file = f"assets/audio/{uuid.uuid4()}"
 	try:
 		await query.answer()
 
@@ -110,6 +108,9 @@ async def download_tiktok_music(update: Update, context: ContextTypes.DEFAULT_TY
 			]
 		]
 
+		# Buat folder jika belum ada
+		os.makedirs("assets/video", exist_ok=True)
+
 		# Konfigurasi yt-dlp
 		ydl_opts = {
 			"format": "bestaudio/best",
@@ -120,21 +121,17 @@ async def download_tiktok_music(update: Update, context: ContextTypes.DEFAULT_TY
 					"preferredquality": "192",
 				}
 			],
-			"outtmpl": f"assets/audio/{uuid.uuid4()}",  # Tanpa ekstensi
+			"outtmpl": temp_file,
 			"quiet": True,
 		}
-
-		# Buat folder jika belum ada
-		os.makedirs("assets/video", exist_ok=True)
-
 		with yt_dlp.YoutubeDL(ydl_opts) as ydl:
 			send = await context.bot.edit_message_text(
 				text="Mohon tunggu.......",
-				chat_id=message_data.get("chat_id"),
+				chat_id=update.effective_chat.id,
 				message_id=message_data.get("message_id"),
 			)
 
-			await context.bot.send_chat_action(chat_id=query.message.chat.id, action="upload_voice")
+			await context.bot.send_chat_action(chat_id=update.effective_chat.id, action="upload_voice")
 
 			info = ydl.extract_info(link, download=True)
 			filename = f"{ydl.prepare_filename(info)}.mp3"
@@ -148,10 +145,10 @@ async def download_tiktok_music(update: Update, context: ContextTypes.DEFAULT_TY
 				"Jangan lupa share bot ini jika menurutmu berguna.",
 			]
 
-			await context.bot.delete_message(chat_id=send.chat.id, message_id=send.message_id)
+			await context.bot.delete_message(chat_id=update.effective_chat.id, message_id=send.message_id)
 
 			await context.bot.send_audio(
-				chat_id=query.message.chat.id,
+				chat_id=update.effective_chat.id,
 				audio=open(filename, "rb"),
 				title=info.get("title", "TikTok Audio"),
 				performer=info.get("uploader", "TikTok"),
@@ -167,18 +164,20 @@ async def download_tiktok_music(update: Update, context: ContextTypes.DEFAULT_TY
 		return ConversationHandler.END
 
 	except yt_dlp.utils.DownloadError as e:
-		await query.edit_message_text(
-			"Gagal mendownload audio. Link mungkin tidak valid atau video di-private."
-		)
-	except Exception as e:
-		await query.edit_message_text("Terjadi kesalahan saat memproses audio.: ".format(e))
-	finally:
 		if os.path.exists(temp_file):
 			os.remove(temp_file)
+		await query.edit_message_text(
+			f"Gagal mendownload audio. Link mungkin tidak valid atau video di-private.: {e}"
+		)
+	except Exception as e:
+		if os.path.exists(temp_file):
+			os.remove(temp_file)
+		await query.edit_message_text(f"Terjadi kesalahan saat memproses audio.: {e}")
+	finally:
 		context.user_data.clear()
 	return ConversationHandler.END
 
-
+# DOWNLOAD TIKTOK VIDEO
 async def download_tiktok_video(update: Update, context: ContextTypes.DEFAULT_TYPE):
 	query = update.callback_query
 	temp_file = f"assets/video/{uuid.uuid4()}.mp4"
