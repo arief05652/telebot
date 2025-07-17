@@ -34,6 +34,7 @@ async def tiktok(update: Update, context: ContextTypes.DEFAULT_TYPE):
 		await update.message.reply_text("Terjadi kesalahan, silahkan coba lagi.")
 		return ConversationHandler.END
 
+
 # PILIH MEDIA DOWNLOADER
 async def tiktok_media(update: Update, context: ContextTypes.DEFAULT_TYPE):
 	try:
@@ -86,6 +87,7 @@ async def tiktok_media(update: Update, context: ContextTypes.DEFAULT_TYPE):
 		await update.message.reply_text("Terjadi kesalahan, silahkan coba lagi.")
 		return ConversationHandler.END
 
+
 # DOWNLOAD TIKTOK MUSIC
 async def download_tiktok_music(update: Update, context: ContextTypes.DEFAULT_TYPE):
 	query = update.callback_query
@@ -131,7 +133,9 @@ async def download_tiktok_music(update: Update, context: ContextTypes.DEFAULT_TY
 				message_id=message_data.get("message_id"),
 			)
 
-			await context.bot.send_chat_action(chat_id=update.effective_chat.id, action="upload_voice")
+			await context.bot.send_chat_action(
+				chat_id=update.effective_chat.id, action="upload_voice"
+			)
 
 			info = ydl.extract_info(link, download=True)
 			filename = f"{ydl.prepare_filename(info)}.mp3"
@@ -145,7 +149,9 @@ async def download_tiktok_music(update: Update, context: ContextTypes.DEFAULT_TY
 				"Jangan lupa share bot ini jika menurutmu berguna.",
 			]
 
-			await context.bot.delete_message(chat_id=update.effective_chat.id, message_id=send.message_id)
+			await context.bot.delete_message(
+				chat_id=update.effective_chat.id, message_id=send.message_id
+			)
 
 			await context.bot.send_audio(
 				chat_id=update.effective_chat.id,
@@ -176,6 +182,7 @@ async def download_tiktok_music(update: Update, context: ContextTypes.DEFAULT_TY
 	finally:
 		context.user_data.clear()
 	return ConversationHandler.END
+
 
 # DOWNLOAD TIKTOK VIDEO
 async def download_tiktok_video(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -250,6 +257,7 @@ async def download_tiktok_video(update: Update, context: ContextTypes.DEFAULT_TY
 		await query.edit_message_text(
 			"Gagal mendownload video. Link mungkin tidak valid atau video di-private."
 		)
+
 	except Exception as e:
 		await query.edit_message_text("Terjadi kesalahan saat memproses video.")
 	finally:
