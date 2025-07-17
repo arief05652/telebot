@@ -25,7 +25,9 @@ from handle import (
 	start,
 	tiktok,
 	tiktok_media,
-	status
+	status,
+	pdf_to_docx,
+	cv_pdf_to_docx,
 )
 
 # LOOGGING BOT
@@ -43,11 +45,11 @@ def main() -> None:
 	application = (
 		Application.builder()
 		.token(os.getenv("TOKEN"))
-		.concurrent_updates(25) # maks interaksi bersamaan
-		.http_version("2") # http version
-		.pool_timeout(15) # timeout 15 dtk ketika sistem overload
-		.read_timeout(15) # timeout 15 dtk ketika network overload
-		.update_queue(asyncio.Queue(30)) # set maks antrian
+		.concurrent_updates(25)  # maks interaksi bersamaan
+		.http_version("2")  # http version
+		.pool_timeout(15)  # timeout 15 dtk ketika sistem overload
+		.read_timeout(15)  # timeout 15 dtk ketika network overload
+		.update_queue(asyncio.Queue(30))  # set maks antrian
 		.build()
 	)
 
@@ -77,7 +79,21 @@ def main() -> None:
 			CallbackQueryHandler(docx_to_pdf, pattern="^docxtopdf$"),
 			CommandHandler("docxtopdf", docx_to_pdf),
 		],
-		states={INPUT_FILE: [MessageHandler(filters.Document.DOCX, cv_docx_to_pdf, block=False)]},
+		states={INPUT_FILE: [MessageHandler(filters.Document.ALL, cv_docx_to_pdf, block=False)]},
+		fallbacks=[
+			CallbackQueryHandler(cancel, pattern="^cancel$"),
+			CommandHandler("cancel", cancel),
+		],
+	)
+
+	pdf_to_docx_conv = ConversationHandler(  # CV PDF TO DOCX
+		allow_reentry=True,
+		block=False,
+		entry_points=[
+			CallbackQueryHandler(pdf_to_docx, pattern="^pdftodocx$"),
+			CommandHandler("pdftodocx", pdf_to_docx),
+		],
+		states={INPUT_FILE: [MessageHandler(filters.Document.ALL, cv_pdf_to_docx, block=False)]},
 		fallbacks=[
 			CallbackQueryHandler(cancel, pattern="^cancel$"),
 			CommandHandler("cancel", cancel),
@@ -85,7 +101,7 @@ def main() -> None:
 	)
 
 	#  REGISTER CONVERSATION
-	application.add_handlers([tiktok_conv, docx_to_pdf_conv])
+	application.add_handlers([tiktok_conv, docx_to_pdf_conv, pdf_to_docx_conv])
 
 	# REGISTER SPECIFIC CALLBACK HANDLERS
 	application.add_handlers(
