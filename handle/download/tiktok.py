@@ -14,32 +14,24 @@ async def tiktok(update: Update, context: ContextTypes.DEFAULT_TYPE):
 	context.user_data.clear()
 	button = [[InlineKeyboardButton("Cancel", callback_data="cancel")]]
 
-	try:
-		if update.callback_query and update.callback_query.data == "tiktok":
-			send = await context.bot.send_message(
-				chat_id=update.effective_chat.id,
-				text="Silahkan kirimkan link video TikTok yang ingin Anda download:",
-				reply_markup=InlineKeyboardMarkup(button),
-			)
-		else:
-			send = await update.message.reply_text(
-				text="Silahkan kirimkan link video TikTok yang ingin Anda download:",
-				reply_markup=InlineKeyboardMarkup(button),
-			)
+	send = await context.bot.send_message(
+		chat_id=update.effective_chat.id,
+		text="""
+Silahkan kirimkan link video TikTok yang ingin Anda download:
+    """,
+		parse_mode="HTML",
+		reply_markup=InlineKeyboardMarkup(button),
+	)
 
-		context.user_data["message_data"] = {"chat_id": send.chat.id, "message_id": send.message_id}
-		return TIKTOK
-
-	except Exception as e:
-		await update.message.reply_text("Terjadi kesalahan, silahkan coba lagi.")
-		return ConversationHandler.END
+	context.user_data["message_data"] = send.message_id
+	return TIKTOK
 
 
 # PILIH MEDIA DOWNLOADER
 async def tiktok_media(update: Update, context: ContextTypes.DEFAULT_TYPE):
 	try:
 		link = update.message.text.strip()
-		data = context.user_data.get("message_data", {})
+		data = context.user_data.get("message_data")
 
 		tiktok_domains = [
 			"https://vt.tiktok.com/",
@@ -75,12 +67,12 @@ async def tiktok_media(update: Update, context: ContextTypes.DEFAULT_TYPE):
 			)
 
 		context.user_data["download_link"] = link  # Simpan langsung string link
-
+		# Kirim pesan untuk pilih media
 		send = await update.message.reply_text(
 			"Pilih media yang ingin di download", reply_markup=InlineKeyboardMarkup(button)
 		)
 
-		context.user_data["message_data"] = {"chat_id": send.chat.id, "message_id": send.message_id}
+		context.user_data["message_data"] = send.message_id
 		return TIKTOK
 
 	except Exception as e:
@@ -92,6 +84,7 @@ async def tiktok_media(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def download_tiktok_music(update: Update, context: ContextTypes.DEFAULT_TYPE):
 	query = update.callback_query
 	temp_file = f"assets/audio/{uuid.uuid4()}"
+
 	try:
 		await query.answer()
 
@@ -188,6 +181,7 @@ async def download_tiktok_music(update: Update, context: ContextTypes.DEFAULT_TY
 async def download_tiktok_video(update: Update, context: ContextTypes.DEFAULT_TYPE):
 	query = update.callback_query
 	temp_file = f"assets/video/{uuid.uuid4()}.mp4"
+
 	try:
 		await query.answer()
 

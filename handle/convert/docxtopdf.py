@@ -15,6 +15,7 @@ async def docx_to_pdf(update: Update, context: ContextTypes.DEFAULT_TYPE):
 	sent_message = await context.bot.send_message(
 		chat_id=update.effective_chat.id,
 		text="Silahkan kirimkan file '.docx'",
+		parse_mode="HTML",
 		reply_markup=InlineKeyboardMarkup(
 			[[InlineKeyboardButton("Cancel", callback_data="cancel")]]
 		),
@@ -48,7 +49,6 @@ async def cv_docx_to_pdf(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 	# Cek apakah yang dikirimkn ber-ektensi .docx
 	if not file_name.endswith(".docx"):
-		await context.bot.delete_message(chat_id=update.effective_chat.id, message_id=message)
 		await context.bot.send_message(
 			chat_id=update.effective_chat.id,
 			text="Pastikan file harus berbentuk DOCX",
@@ -60,7 +60,6 @@ async def cv_docx_to_pdf(update: Update, context: ContextTypes.DEFAULT_TYPE):
 		processing_msg = await context.bot.send_message(
 			chat_id=update.effective_chat.id, text="Converting DOCX to PDF..."
 		)
-		context.user_data["processing_msg_id"] = processing_msg.message_id
 
 		# Template file
 		temp_docx = os.path.abspath(f"assets/document/{id}.docx")
@@ -82,14 +81,16 @@ async def cv_docx_to_pdf(update: Update, context: ContextTypes.DEFAULT_TYPE):
 			return ConversationHandler.END
 
 		# Hapus pesan "Converting..." sebelum kirim hasil
-		await context.bot.delete_message(
-			chat_id=update.effective_chat.id, message_id=processing_msg.message_id
+		await processing_msg.delete()
+
+		await context.bot.send_chat_action(
+			chat_id=update.effective_chat.id, action="upload_document"
 		)
 
 		await context.bot.send_document(
 			chat_id=update.effective_chat.id,
 			document=open(temp_pdf, "rb"),
-			filename=str(os.path.splitext(file_name)[0]) + ".pdf",
+			filename=f"{file_name}.pdf",
 			reply_markup=InlineKeyboardMarkup(button),
 			caption="Jangan lupa share bot ini jika menurutmu berguna.",
 		)

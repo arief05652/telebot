@@ -1,6 +1,8 @@
-import psutil, asyncio, threading
+import asyncio
+import threading
 
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+import psutil
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import ContextTypes
 
 

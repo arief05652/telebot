@@ -15,7 +15,15 @@ async def pdf_to_docx(update: Update, context: ContextTypes.DEFAULT_TYPE):
 	# Kirim pesan bot dan simpan message_id-nya
 	sent_message = await context.bot.send_message(
 		chat_id=update.effective_chat.id,
-		text="Silahkan kirimkan file '.pdf'",
+		text=f"""
+<b>Silahkan kirimkan file '.pdf'</b>
+
+Note:
+- Mengubah pdf ke docx tidak akan sesuai dengan pdf aslinya karna 
+harus mengubah fix document yang sudah di sesuaikan di semua perangkat 
+menjadi editable document.
+""",
+		parse_mode="HTML",
 		reply_markup=InlineKeyboardMarkup(
 			[[InlineKeyboardButton("Cancel", callback_data="cancel")]]
 		),
@@ -94,7 +102,7 @@ async def cv_pdf_to_docx(update: Update, context: ContextTypes.DEFAULT_TYPE):
 		await context.bot.send_document(
 			chat_id=update.effective_chat.id,
 			document=open(temp_docx, "rb"),
-			filename=str(os.path.splitext(file_name)[0]) + ".docx",
+			filename=f"{file_name}.docx",
 			reply_markup=InlineKeyboardMarkup(button),
 			caption="Jangan lupa share bot ini jika menurutmu berguna.",
 		)

@@ -1,6 +1,6 @@
+import asyncio
 import logging
 import os
-import asyncio
 
 import telegram
 from dotenv import load_dotenv
@@ -18,16 +18,16 @@ load_dotenv()
 from handle import (
 	cancel,
 	cv_docx_to_pdf,
+	cv_pdf_to_docx,
 	docx_to_pdf,
 	download_tiktok_music,
 	download_tiktok_video,
 	help,
+	pdf_to_docx,
 	start,
+	status,
 	tiktok,
 	tiktok_media,
-	status,
-	pdf_to_docx,
-	cv_pdf_to_docx,
 )
 
 # LOOGGING BOT
